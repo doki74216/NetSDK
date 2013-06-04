@@ -9,6 +9,7 @@ using System.Configuration;
 using Amazon;
 using Amazon.S3;
 using Amazon.S3.Model;
+using System.IO;
 
 namespace TestNetSDK
 {
@@ -20,7 +21,7 @@ namespace TestNetSDK
             NameValueCollection appConfig = ConfigurationManager.AppSettings;
 
             AmazonS3 s3Client = AWSClientFactory.CreateAmazonS3Client(appConfig["AWSAccessKey"], appConfig["AWSSecretKey"]);
-            String bucketName = "chttest1";
+            String bucketName = "chttest3";
             String objectName = "hello";
             //String filePath = "D:\\Visual Studio Project\\TestNetSDK\\TestNetSDK\\pic.jpg";
 
@@ -37,17 +38,21 @@ namespace TestNetSDK
             PutObjectResponse PutResult = s3Client.PutObject(request);
             System.Console.WriteLine("Uploaded Object Etag: {0}\n", PutResult.ETag);
 
-            //HeadObject，已修正此問題，待新版code release即可正常使用
-            /*
+            //HeadObject
             System.Console.WriteLine("HeadObject!\n");
             GetObjectMetadataResponse HeadResult = s3Client.GetObjectMetadata(new GetObjectMetadataRequest().WithBucketName(bucketName).WithKey(objectName));
             System.Console.WriteLine("HeadObject: (1)ContentLength: {0} (2)ETag: {1}\n", HeadResult.ContentLength,HeadResult.ETag);
-            */
+            
 
             //GetObject
             System.Console.WriteLine("GetObject!\n");
             GetObjectResponse GetResult =  s3Client.GetObject(new GetObjectRequest().WithBucketName(bucketName).WithKey(objectName).WithByteRange(1,15));
-            System.Console.WriteLine("Get Object Content:\n {0}\n",GetResult.ResponseStream);
+            
+            
+            Stream responseStream = GetResult.ResponseStream; 
+            StreamReader reader = new StreamReader(responseStream);
+            System.Console.WriteLine("Get Object Content:\n {0}\n", reader.ReadToEnd()); 
+
             System.Console.WriteLine("Get Object ETag:\n {0}\n", GetResult.ETag);
 
             //CopyObject
@@ -59,9 +64,7 @@ namespace TestNetSDK
             s3Client.DeleteObject(new DeleteObjectRequest().WithBucketName(bucketName).WithKey(objectName));
             s3Client.DeleteObject(new DeleteObjectRequest().WithBucketName(bucketName).WithKey("hihi")); //copied object
 
-
             //==============================jerry add ==============================
-
             System.Console.WriteLine("Jerry Add!\n");
             String objectName2 = "hello2";
             NameValueCollection nvc = new NameValueCollection();
@@ -71,7 +74,6 @@ namespace TestNetSDK
             PutObjectRequest request2 = new PutObjectRequest();
             request2.WithBucketName(bucketName);
             request2.WithKey(objectName2);
-            //request2.WithFilePath(filePath);
             request2.WithAutoCloseStream(true);
             request2.WithCannedACL(S3CannedACL.BucketOwnerFullControl);
             request2.WithContentBody("test");
@@ -91,12 +93,14 @@ namespace TestNetSDK
             request3.WithByteRange(1, 2);
             DateTime datetime = DateTime.UtcNow;
             // 似乎不支援 datetime
-            //request3.WithModifiedSinceDate(datetime.AddHours(-1));
-            //request3.WithUnmodifiedSinceDate(datetime);
+            request3.WithModifiedSinceDate(datetime.AddHours(-1));
+            request3.WithUnmodifiedSinceDate(datetime.AddHours(1));
             request3.WithETagToMatch(PutResult2.ETag);
             request3.WithETagToNotMatch("notMatch");
             GetObjectResponse GetResult2 = s3Client.GetObject(request3);
-            System.Console.WriteLine("Get Object Content:\n {0}\n", GetResult2.ResponseStream);
+            Stream responseStream2 = GetResult2.ResponseStream;
+            StreamReader reader2 = new StreamReader(responseStream2);
+            System.Console.WriteLine("Get Object Content(es):\n {0}\n", reader2.ReadToEnd()); 
             System.Console.WriteLine("Get Object ETag:\n {0}\n", GetResult2.ETag);
 
             System.Console.WriteLine("HeadObject!\n");
@@ -105,12 +109,12 @@ namespace TestNetSDK
             request4.WithKey(objectName2);
             DateTime datetime2 = DateTime.UtcNow;
             // 似乎不支援 datetime
-            //request4.WithModifiedSinceDate(datetime.AddHours(-1));
-            //request4.WithUnmodifiedSinceDate(datetime2);
+            request4.WithModifiedSinceDate(datetime2.AddHours(-1));
+            request4.WithUnmodifiedSinceDate(datetime2.AddHours(1));
             request4.WithETagToMatch(PutResult2.ETag);
             request4.WithETagToNotMatch("notMatch");
-            //GetObjectMetadataResponse HeadResult2 = s3Client.GetObjectMetadata(request4);
-            //System.Console.WriteLine("HeadObject: (1)ContentLength: {0} (2)ETag: {1}\n", HeadResult2.ContentLength, HeadResult2.ETag);
+            GetObjectMetadataResponse HeadResult2 = s3Client.GetObjectMetadata(request4);
+            System.Console.WriteLine("HeadObject: (1)ContentLength: {0} (2)ETag: {1}\n", HeadResult2.ContentLength, HeadResult2.ETag);
 
             CopyObjectRequest request5 = new CopyObjectRequest();
             request5.WithSourceBucket(bucketName);
@@ -119,8 +123,8 @@ namespace TestNetSDK
             request5.WithDestinationKey("hihi2");
             DateTime datetime3 = DateTime.UtcNow;
             // 似乎不支援 datetime
-            //request5.WithModifiedSinceDate(datetime3.AddHours(-1));
-            //request5.WithUnmodifiedSinceDate(datetime3);
+            request5.WithModifiedSinceDate(datetime3.AddHours(-1));
+            request5.WithUnmodifiedSinceDate(datetime3.AddHours(1));
             request5.WithETagToMatch(PutResult2.ETag);
             request5.WithETagToNotMatch("notMatch");
             request5.WithMetaData(nvc);
@@ -133,9 +137,7 @@ namespace TestNetSDK
             System.Console.WriteLine("Delete Object!\n");
             s3Client.DeleteObject(new DeleteObjectRequest().WithBucketName(bucketName).WithKey(objectName2));
             s3Client.DeleteObject(new DeleteObjectRequest().WithBucketName(bucketName).WithKey("hihi2")); //copied object
-
             //==============================jerry add end==============================
-
 
             //DeleteBucket
             System.Console.WriteLine("Delete Bucket!\n");
